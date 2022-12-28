@@ -1,0 +1,9 @@
+[submodule "aegisub-wangqr"]
+	path = aegisub-wangqr
+	url = https://github.com/wangqr/Aegisub
+[submodule "ffmpeg"]
+	path = ffmpeg
+	url = https://git.ffmpeg.org/ffmpeg.git
+[submodule "ffms2"]
+	path = ffms2
+	url = https://github.com/FFMS/ffms2

@@ -1,0 +1,10 @@
+*.AppImage
+*.appimage
+linuxdeploy-plugin-gtk.sh
+upload.sh
+*.tar.xz
+VERSIONS
+
+aegisub-appimage/
+usr/
+
