@@ -1,0 +1,189 @@
+Build Aegisub in a portable way on Linux and fix minilua path
+
+
+diff --git a/Makefile.inc.in b/Makefile.inc.in
+index 4e5471b12..642f882ef 100644
+--- a/Makefile.inc.in
++++ b/Makefile.inc.in
+@@ -58,7 +58,7 @@ P_LOCALE      = @localedir@
+ P_APPDATA     = @P_APPDATA@
+ P_DESKTOP     = @P_DESKTOP@
+ P_ICON        = @P_ICON@
+-P_DATA        = $(P_DATAROOT)/aegisub/
++P_DATA        = @P_DATA@
+ 
+ ###############
+ # LIBRARY FLAGS
+diff --git a/configure.ac b/configure.ac
+index 856e38993..fb704ebf8 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -50,9 +50,10 @@ AC_SUBST(AEGISUB_COMMAND)
+ AC_DEFINE_UNQUOTED([AEGISUB_COMMAND], ["${AEGISUB_COMMAND}"], [Name of the Aegisub executable])
+ 
+ # Name of gettext catalog.
+-AEGISUB_CATALOG="aegisub"
+-AC_SUBST(AEGISUB_CATALOG)
+-AC_DEFINE_UNQUOTED([AEGISUB_CATALOG], ["${AEGISUB_CATALOG}"], [Name of the Aegisub gettext catalog])
++# See '--enable-appimage'
++#AEGISUB_CATALOG="aegisub"
++#AC_SUBST(AEGISUB_CATALOG)
++#AC_DEFINE_UNQUOTED([AEGISUB_CATALOG], ["${AEGISUB_CATALOG}"], [Name of the Aegisub gettext catalog])
+ 
+ # Handle location of appdata files: https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-location
+ AC_ARG_WITH(appdata-dir,
+@@ -441,7 +442,7 @@ AC_CHECK_PROGS([LUA], [lua luajit lua5.3 lua-5.3 lua5.2 lua-5.2 lua5.1 lua-5.1])
+ 
+ # If the user doesn't have an installed copy of Lua, just use the one built
+ # as part of building LuaJIT
+-AS_IF([test -z $LUA], [LUA="$srcdir/vendor/luajit/src/host/minilua"])
++AS_IF([test -z $LUA], [LUA='$(TOP)/vendor/luajit/src/host/minilua'])
+ 
+ ######################################################
+ # Debugging support
+@@ -568,6 +569,32 @@ AC_SUBST(DEFAULT_PLAYER_AUDIO)
+ # Set some friendly strings if some of the above aren't detected.
+ DEFAULT_PLAYER_AUDIO=${DEFAULT_PLAYER_AUDIO:-NONE}
+ 
++################
++# AppImage build
++################
++# If enabled, localization and automation data is obtained from the binary's
++# path and never from the system's root. It will also install files that
++# Aegisub will lookup next to the binary, so be careful with "make install".
++AC_ARG_ENABLE(appimage,
++              AS_HELP_STRING([--enable-appimage],
++                             [Enable certain relocation settings useful for building AppImages or generic portable builds [no]]))
++
++P_DATA="$datarootdir/aegisub"
++AEGISUB_CATALOG="aegisub"
++
++AS_IF([test x$enable_appimage = xyes], [
++  AC_DEFINE([APPIMAGE_BUILD], [], [Define to enable AppImage compatible relocations])
++  P_DATA="$bindir"
++  localedir="$bindir/locale"
++  # use a different catalog name
++  AEGISUB_CATALOG="aegisub-appimage"
++])
++
++enable_appimage=${enable_appimage:-no}
++AC_SUBST(P_DATA)
++AC_SUBST(AEGISUB_CATALOG)
++AC_DEFINE_UNQUOTED([AEGISUB_CATALOG], ["${AEGISUB_CATALOG}"], [Name of the Aegisub gettext catalog])
++
+ ###############
+ # Misc settings
+ ###############
+@@ -617,6 +644,7 @@ Configure settings
+   Install prefix:        $prefix
+   Revision:              $BUILD_GIT_VERSION_STRING
+   Debug                  $enable_debug
++  AppImage               $enable_appimage
+   CFLAGS                 $CFLAGS
+   CXXFLAGS               $CXXFLAGS
+   CPPFLAGS               $CPPFLAGS
+diff --git a/libaegisub/unix/path.cpp b/libaegisub/unix/path.cpp
+index 0541e0dbe..414bff8fc 100644
+--- a/libaegisub/unix/path.cpp
++++ b/libaegisub/unix/path.cpp
+@@ -22,6 +22,11 @@
+ #include <boost/filesystem/operations.hpp>
+ #include <pwd.h>
+ 
++#ifndef __APPLE__
++#include <stdlib.h>
++#include <libgen.h>
++#endif
++
+ namespace {
+ #ifndef __APPLE__
+ std::string home_dir() {
+@@ -35,24 +40,55 @@ std::string home_dir() {
+ 
+ 	throw agi::EnvironmentError("Could not get home directory. Make sure HOME is set.");
+ }
++
++#ifdef APPIMAGE_BUILD
++std::string exe_dir() {
++	char *exe, *dir;
++	std::string data = "";
++
++#ifdef __FreeBSD__
++	exe = realpath("/proc/self/file", NULL);
++#else
++	exe = realpath("/proc/self/exe", NULL);
+ #endif
++
++	if (!exe) return "";
++
++	if ((dir = dirname(exe)) && strlen(dir) > 0) {
++		data = dir;
++	}
++
++	free(exe);
++
++	return data;
++}
++#endif  // APPIMAGE_BUILD
++#endif  // __APPLE__
+ }
+ 
+ namespace agi {
+ void Path::FillPlatformSpecificPaths() {
+-#ifndef __APPLE__
+-	agi::fs::path home = home_dir();
+-	SetToken("?user", home/".aegisub");
+-	SetToken("?local", home/".aegisub");
+-	SetToken("?data", P_DATA);
+-	SetToken("?dictionary", "/usr/share/hunspell");
+-#else
++#ifdef __APPLE__
+ 	agi::fs::path app_support = agi::util::GetApplicationSupportDirectory();
+ 	SetToken("?user", app_support/"Aegisub");
+ 	SetToken("?local", app_support/"Aegisub");
+ 	SetToken("?data", agi::util::GetBundleSharedSupportDirectory());
+ 	SetToken("?dictionary", agi::util::GetBundleSharedSupportDirectory() + "/dictionaries");
++#else
++	agi::fs::path home = home_dir();
++	SetToken("?user", home/".aegisub");
++	SetToken("?local", home/".aegisub");
++
++#ifdef APPIMAGE_BUILD
++	agi::fs::path data = exe_dir();
++	if (data.empty()) data = home/".aegisub";
++	SetToken("?data", data);
++	SetToken("?dictionary", Decode("?data/dictionaries"));
++#else
++	SetToken("?dictionary", "/usr/share/hunspell");
+ #endif
++#endif  // __APPLE__
++
+ 	SetToken("?temp", boost::filesystem::temp_directory_path());
+ }
+ 
+diff --git a/src/Makefile b/src/Makefile
+index 77928e817..80119d199 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -209,6 +209,7 @@ $(d)auto4_lua.o_FLAGS                   := $(CFLAGS_LUA)
+ $(d)auto4_lua_assfile.o_FLAGS           := $(CFLAGS_LUA)
+ $(d)auto4_lua_dialog.o_FLAGS            := $(CFLAGS_LUA)
+ $(d)auto4_lua_progresssink.o_FLAGS      := $(CFLAGS_LUA)
++$(d)aegisublocale.o_FLAGS               := -DP_LOCALE=\"$(P_LOCALE)\"
+ 
+ $(src_OBJ): $(d)libresrc/bitmap.h $(d)libresrc/default_config.h
+ 
+diff --git a/src/aegisublocale.cpp b/src/aegisublocale.cpp
+index de8df7296..cc5f4e10d 100644
+--- a/src/aegisublocale.cpp
++++ b/src/aegisublocale.cpp
+@@ -55,6 +55,9 @@ wxTranslations *AegisubLocale::GetTranslations() {
+ 	if (!translations) {
+ 		wxTranslations::Set(translations = new wxTranslations);
+ 		wxFileTranslationsLoader::AddCatalogLookupPathPrefix(config::path->Decode("?data/locale/").wstring());
++#if !defined(_WIN32) && !defined(__APPLE__) && !defined(APPIMAGE_BUILD)
++		wxFileTranslationsLoader::AddCatalogLookupPathPrefix(P_LOCALE);
++#endif
+ 	}
+ 	return translations;
+ }
