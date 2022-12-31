@@ -15,7 +15,8 @@ libtool
 libgl1-mesa-dev
 libx11-dev
 libice-dev
-libass-dev
+libfribidi-dev
+libharfbuzz-dev
 libfreetype6-dev
 libfontconfig1-dev
 libicu-dev
