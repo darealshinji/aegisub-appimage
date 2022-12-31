@@ -12,7 +12,7 @@ pfx=/opt/chroot
 extra_packages="build-essential nano bash-completion command-not-found software-properties-common"
 
 if [ -z $1 ] || [ -z $2 ]; then
-  echo "usage: $0 codename users [i386]"
+  echo "usage: $0 codename username [i386]"
   exit 1
 fi
 

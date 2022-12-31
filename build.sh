@@ -11,8 +11,17 @@ export PATH="$PFX/bin:$PATH"
 export LD_LIBRARY_PATH="$PFX/lib:$LD_LIBRARY_PATH"
 export PKG_CONFIG_PATH="$PFX/lib/pkgconfig:$PFX/share/pkgconfig:$PKG_CONFIG_PATH"
 
+# libass
+cd libass
+./autogen.sh
+./configure --prefix="$PFX" --disable-static --enable-shared
+make -j$JOBS
+make install
+mkdir -p "$DOCDIR/libass"
+cp COPYING MAINTAINERS "$DOCDIR/libass"
+
 # ffmpeg
-cd ffmpeg
+cd ../FFmpeg
 ./configure --prefix="$PFX" \
   --disable-programs \
   --disable-doc \
@@ -55,6 +64,10 @@ VERSION=$(grep BUILD_VERSION_STRING Makefile.inc | tr -d '[:blank:]' | cut -d= -
 cd ..
 
 # appimage
+wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+wget https://github.com/linuxdeploy/linuxdeploy-plugin-gtk/raw/master/linuxdeploy-plugin-gtk.sh
+chmod a+x *.sh *.AppImage
 ./linuxdeploy-x86_64.AppImage --appdir="$APPDIR" --plugin gtk
 ./appimagetool-x86_64.AppImage --no-appstream "$APPDIR" aegisub-${VERSION}.AppImage
 
