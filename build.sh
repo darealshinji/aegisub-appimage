@@ -27,6 +27,7 @@ cd ../FFmpeg
   --disable-doc \
   --enable-gpl \
   --enable-version3 \
+  --disable-encoders \
   --disable-static \
   --enable-shared
 make -j$JOBS
