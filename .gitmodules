@@ -1,5 +1,5 @@
-[submodule "aegisub-wangqr"]
-	path = aegisub-wangqr
+[submodule "Aegisub-wangqr"]
+	path = Aegisub-wangqr
 	url = https://github.com/wangqr/Aegisub
 [submodule "libass"]
 	path = libass

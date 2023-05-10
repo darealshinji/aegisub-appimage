@@ -44,5 +44,5 @@ libhunspell-dev
 libuchardet-dev
 
 libwxbase3.0-dev
-libwxgtk3.0-dev
+libwxgtk3.0-gtk3-dev
 wx3.0-headers

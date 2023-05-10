@@ -4,9 +4,9 @@ SCRIPT_DIR="$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)"
 
 git submodule status > VERSIONS
 
-cd "$SCRIPT_DIR/aegisub-wangqr"
+cd "$SCRIPT_DIR/Aegisub-wangqr"
 mv .git .git_old
-ln -s ../.git/modules/aegisub-wangqr .git
+ln -s ../.git/modules/Aegisub-wangqr .git
 bash build/version.sh .
 rm .git
 mv .git_old .git

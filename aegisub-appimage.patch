@@ -1,8 +1,5 @@
-Build Aegisub in a portable way on Linux and fix minilua path
-
-
 diff --git a/Makefile.inc.in b/Makefile.inc.in
-index 4e5471b12..642f882ef 100644
+index 4e5471b..642f882 100644
 --- a/Makefile.inc.in
 +++ b/Makefile.inc.in
 @@ -58,7 +58,7 @@ P_LOCALE      = @localedir@
@@ -15,7 +12,7 @@ index 4e5471b12..642f882ef 100644
  ###############
  # LIBRARY FLAGS
 diff --git a/configure.ac b/configure.ac
-index 856e38993..fb704ebf8 100644
+index 856e389..fb704eb 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -50,9 +50,10 @@ AC_SUBST(AEGISUB_COMMAND)
@@ -83,7 +80,7 @@ index 856e38993..fb704ebf8 100644
    CXXFLAGS               $CXXFLAGS
    CPPFLAGS               $CPPFLAGS
 diff --git a/libaegisub/unix/path.cpp b/libaegisub/unix/path.cpp
-index 0541e0dbe..414bff8fc 100644
+index 0541e0d..2215d7b 100644
 --- a/libaegisub/unix/path.cpp
 +++ b/libaegisub/unix/path.cpp
 @@ -22,6 +22,11 @@
@@ -98,27 +95,22 @@ index 0541e0dbe..414bff8fc 100644
  namespace {
  #ifndef __APPLE__
  std::string home_dir() {
-@@ -35,24 +40,55 @@ std::string home_dir() {
+@@ -35,24 +40,49 @@ std::string home_dir() {
  
  	throw agi::EnvironmentError("Could not get home directory. Make sure HOME is set.");
  }
+-#endif
 +
 +#ifdef APPIMAGE_BUILD
 +std::string exe_dir() {
 +	char *exe, *dir;
 +	std::string data = "";
 +
-+#ifdef __FreeBSD__
-+	exe = realpath("/proc/self/file", NULL);
-+#else
-+	exe = realpath("/proc/self/exe", NULL);
- #endif
++	if ((exe = realpath("/proc/self/exe", NULL)) == NULL)
++		return "";
 +
-+	if (!exe) return "";
-+
-+	if ((dir = dirname(exe)) && strlen(dir) > 0) {
++	if ((dir = dirname(exe)) && strlen(dir) > 0)
 +		data = dir;
-+	}
 +
 +	free(exe);
 +
@@ -147,14 +139,14 @@ index 0541e0dbe..414bff8fc 100644
 +	agi::fs::path home = home_dir();
 +	SetToken("?user", home/".aegisub");
 +	SetToken("?local", home/".aegisub");
++	SetToken("?dictionary", "/usr/share/hunspell");
 +
 +#ifdef APPIMAGE_BUILD
 +	agi::fs::path data = exe_dir();
 +	if (data.empty()) data = home/".aegisub";
 +	SetToken("?data", data);
-+	SetToken("?dictionary", Decode("?data/dictionaries"));
 +#else
-+	SetToken("?dictionary", "/usr/share/hunspell");
++	SetToken("?data", P_DATA);
  #endif
 +#endif  // __APPLE__
 +
@@ -162,7 +154,7 @@ index 0541e0dbe..414bff8fc 100644
  }
  
 diff --git a/src/Makefile b/src/Makefile
-index 77928e817..80119d199 100644
+index 77928e8..80119d1 100644
 --- a/src/Makefile
 +++ b/src/Makefile
 @@ -209,6 +209,7 @@ $(d)auto4_lua.o_FLAGS                   := $(CFLAGS_LUA)
@@ -174,7 +166,7 @@ index 77928e817..80119d199 100644
  $(src_OBJ): $(d)libresrc/bitmap.h $(d)libresrc/default_config.h
  
 diff --git a/src/aegisublocale.cpp b/src/aegisublocale.cpp
-index de8df7296..cc5f4e10d 100644
+index de8df72..cc5f4e1 100644
 --- a/src/aegisublocale.cpp
 +++ b/src/aegisublocale.cpp
 @@ -55,6 +55,9 @@ wxTranslations *AegisubLocale::GetTranslations() {
