@@ -1,10 +1,10 @@
 Aegisub AppImage
 ----------------
-
 This repository contains scripts to build [Aegisub](https://github.com/wangqr/Aegisub) and bundle it as an [AppImage](https://appimage.github.io/).
 
+Download
+--------
 See the [release section](https://github.com/darealshinji/aegisub-appimage/releases) for pre-built AppImages and source tarballs.
-
 
 Build from source
 -----------------
